@@ -1346,9 +1346,11 @@ function endGame() {
    HERD CALCULATION (FUZZY MATCHING)
 ════════════════════════════════════════ */
 
-// British/American spellings + common equivalents
+// British/American spellings + common abbreviations + equivalents
 const SYNONYMS = {
+  // Maths / science
   maths:'math', mathematics:'math',
+  // British/American spellings
   colour:'color', colours:'color', coloured:'colored',
   favourite:'favorite', favourites:'favorite',
   grey:'gray', greys:'grays',
@@ -1358,19 +1360,36 @@ const SYNONYMS = {
   organised:'organized', organising:'organizing',
   recognised:'recognized', recognising:'recognizing',
   practise:'practice',
-  telly:'tv', television:'tv',
-  aeroplane:'airplane', aeroplanes:'airplanes',
   autumn:'fall',
   jumper:'sweater', jumpers:'sweaters',
   trainers:'sneakers', trainer:'sneaker',
   sofa:'couch', settee:'couch',
-  rubbish:'garbage', rubbishes:'garbage',
+  rubbish:'garbage',
   biscuit:'cookie', biscuits:'cookies',
   crisps:'chips', crisp:'chip',
   lorry:'truck', lorries:'trucks',
   motorway:'highway', motorways:'highways',
+  // Devices / tech
+  telly:'tv', television:'tv',
   cellphone:'phone', smartphone:'phone', smartphones:'phones', mobiles:'phones', mobile:'phone',
-  football:'soccer',  // equate for non-US usage
+  aeroplane:'airplane', aeroplanes:'airplanes',
+  // Social media short forms (too short for prefix matching)
+  ig:'instagram', insta:'instagram',
+  fb:'facebook',
+  yt:'youtube',
+  tt:'tiktok', tiktok:'tiktok',
+  wa:'whatsapp',
+  // Other common short forms
+  uni:'university',
+  doc:'doctor', docs:'doctor',
+  gym:'gymnasium',
+  fridge:'refrigerator',
+  photo:'photograph', photos:'photograph',
+  pic:'picture', pics:'picture',
+  ad:'advertisement', ads:'advertisement',
+  app:'application', apps:'application',
+  // Equate obvious variants
+  football:'soccer',
   ketchup:'catsup',
 };
 
@@ -1411,6 +1430,11 @@ function levenshtein(a, b) {
 function answersMatch(a, b) {
   const ca = canonical(a), cb = canonical(b);
   if (ca === cb) return true;
+  // Prefix matching: one word is an abbreviation/shortening of the other
+  // e.g. "Insta" → "Instagram", "Face" → "Facebook", "Whats" → "Whatsapp"
+  // Require shorter ≥ 4 chars and longer is at least 2 chars more to avoid noise
+  const [shorter, longer] = ca.length <= cb.length ? [ca, cb] : [cb, ca];
+  if (shorter.length >= 4 && longer.length >= shorter.length + 2 && longer.startsWith(shorter)) return true;
   // Allow 1-char typo for words of 7+ canonical chars (reduces false positives)
   if (ca.length >= 7 && cb.length >= 7 && levenshtein(ca, cb) === 1) return true;
   return false;
@@ -1442,7 +1466,8 @@ function calcHerd(answers) {
   // Display the most frequently written form within the group
   const freq = {};
   winner.members.forEach(m => { const k = normalize(m.answer); freq[k] = (freq[k]||0)+1; });
-  const displayAnswer = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
+  // Sort by frequency desc, then by length desc (prefer full word over abbreviation)
+  const displayAnswer = Object.entries(freq).sort((a,b)=>b[1]-a[1]||b[0].length-a[0].length)[0][0];
 
   return {
     herdAnswer: displayAnswer,
