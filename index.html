@@ -638,6 +638,43 @@
       font-family: inherit;
     }
 
+    /* ── Answer timer ── */
+    .timer-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .timer-ring-wrap {
+      position: relative;
+      width: 64px; height: 64px;
+    }
+
+    .timer-ring-wrap svg {
+      transform: rotate(-90deg);
+      position: absolute; inset: 0;
+    }
+
+    .timer-ring-bg { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 5; }
+
+    .timer-ring-arc {
+      fill: none;
+      stroke: var(--green);
+      stroke-width: 5;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.9s linear, stroke 0.5s;
+    }
+
+    .timer-ring-arc.urgent { stroke: var(--red); }
+
+    .timer-number {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 900;
+    }
+
     /* ── Online mode ── */
     .spinner {
       width: 48px; height: 48px;
@@ -763,7 +800,7 @@
       </div>
     </div>
     <div class="spacer-lg"></div>
-    <button class="btn btn-primary" onclick="goSetup()">Let's Play!</button>
+    <button class="btn btn-primary" onclick="goScreen('s-welcome')">← Back to Menu</button>
   </div>
 
   <!-- ═══════════ SETUP ═══════════ -->
@@ -804,6 +841,14 @@
         <textarea id="custom-questions" placeholder="One question per line…&#10;Name a hot drink&#10;Name the best sport&#10;Name a famous city"
           style="width:100%;min-height:110px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:0.95rem;padding:12px;resize:vertical;font-family:inherit;outline:none"></textarea>
       </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="card" style="width:100%">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px">Answer Timer</div>
+      <div class="rounds-row" id="timer-row"></div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-top:10px;text-align:center">Time's up = no answer submitted for that player</p>
     </div>
 
     <div class="spacer-lg"></div>
@@ -863,6 +908,17 @@
     </div>
 
     <div id="a-player-label" style="font-size:0.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;text-align:center;margin-bottom:8px"></div>
+
+    <div id="a-timer-display" class="timer-display" style="display:none">
+      <div class="timer-ring-wrap">
+        <svg viewBox="0 0 64 64" width="64" height="64">
+          <circle class="timer-ring-bg" cx="32" cy="32" r="27"/>
+          <circle class="timer-ring-arc" id="a-timer-arc" cx="32" cy="32" r="27"
+            stroke-dasharray="169.6" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-number" id="a-timer-num">30</div>
+      </div>
+    </div>
 
     <input type="text" class="answer-input-big" id="answer-field"
       placeholder="Your answer…"
@@ -972,6 +1028,14 @@
           style="width:100%;min-height:90px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:0.95rem;padding:12px;resize:vertical;font-family:inherit;outline:none"></textarea>
       </div>
     </div>
+    <div class="spacer"></div>
+
+    <div class="card" style="width:100%">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px">Answer Timer</div>
+      <div class="rounds-row" id="oh-timer-row"></div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-top:10px;text-align:center">Time's up = no answer submitted</p>
+    </div>
+
     <div class="spacer-lg"></div>
     <button class="btn btn-primary" id="oh-create-btn" onclick="createOnlineRoom()">🌐 Create Room</button>
     <div class="spacer"></div>
@@ -986,7 +1050,10 @@
     <div class="card card-glow" style="text-align:center;width:100%">
       <div style="font-size:0.75rem;font-weight:700;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase">Room Code</div>
       <div class="room-code-display" id="hl-code">XXXXX</div>
-      <button class="btn btn-secondary" style="min-height:40px;font-size:0.85rem" onclick="copyRoomCode(this)">📋 Copy Code</button>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-secondary" style="min-height:40px;font-size:0.85rem" onclick="copyRoomCode(this)">📋 Copy</button>
+        <button class="btn btn-secondary" style="min-height:40px;font-size:0.85rem" onclick="shareRoomCode()">📤 Share</button>
+      </div>
     </div>
     <div class="spacer"></div>
     <div class="card" style="width:100%">
@@ -1064,6 +1131,18 @@
       <div class="question-text" id="pa-q-text"></div>
     </div>
     <div id="pa-player-label" style="font-size:0.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;text-align:center;margin-bottom:8px"></div>
+
+    <div id="pa-timer-display" class="timer-display" style="display:none">
+      <div class="timer-ring-wrap">
+        <svg viewBox="0 0 64 64" width="64" height="64">
+          <circle class="timer-ring-bg" cx="32" cy="32" r="27"/>
+          <circle class="timer-ring-arc" id="pa-timer-arc" cx="32" cy="32" r="27"
+            stroke-dasharray="169.6" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-number" id="pa-timer-num">30</div>
+      </div>
+    </div>
+
     <input type="text" class="answer-input-big" id="pa-answer-field"
       placeholder="Your answer…"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
@@ -1165,6 +1244,8 @@ function goScreen(id) {
   const prev = document.getElementById(_current);
   const next = document.getElementById(id);
   if (!next || _current === id) return;
+  // Stop any running countdown when leaving an answer screen
+  if (_current === 's-answer' || _current === 's-player-answer') stopCountdown();
   prev.classList.add('exit');
   prev.classList.remove('active');
   next.classList.add('active');
@@ -1220,6 +1301,9 @@ function renderSetup() {
     b.onclick = () => { selectedRounds = n; renderSetup(); };
     rr.appendChild(b);
   });
+
+  // Timer
+  renderTimerRow('timer-row', selectedTimer, v => { selectedTimer = v; });
 }
 
 function updateAvatar(i) {
@@ -1367,12 +1451,24 @@ function unlockTurn() {
 
   const field = document.getElementById('answer-field');
   field.value = '';
+  document.getElementById('a-timer-display').style.display = selectedTimer ? '' : 'none';
 
   goScreen('s-answer');
   setTimeout(() => field.focus(), 350);
+
+  if (selectedTimer) {
+    startCountdown(selectedTimer, 'a-timer-display', 'a-timer-arc', 'a-timer-num', () => {
+      // Time's up — record blank answer and advance
+      const p = G.players[G.currentPlayerIdx];
+      G.answers.push({ playerName: p.name, answer: '—' });
+      const nextIdx = G.currentPlayerIdx + 1;
+      if (nextIdx < G.players.length) showCover(nextIdx); else showReveal();
+    });
+  }
 }
 
 function submitAnswer() {
+  stopCountdown();
   const field  = document.getElementById('answer-field');
   const answer = field.value.trim();
   if (!answer) {
@@ -1790,6 +1886,67 @@ function launchConfetti() {
 }
 
 /* ════════════════════════════════════════
+   ANSWER TIMER
+════════════════════════════════════════ */
+let selectedTimer = 0; // 0 = off
+let _ohTimer      = 0;
+const TIMER_OPTS  = [0, 15, 30, 45, 60]; // 0 = Off
+const CIRC        = 169.6; // 2π×27
+
+let _activeTimerInterval = null;
+
+function renderTimerRow(rowId, currentVal, onChange) {
+  const rr = document.getElementById(rowId);
+  if (!rr) return;
+  rr.innerHTML = '';
+  TIMER_OPTS.forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'rounds-btn' + (n === currentVal ? ' selected' : '');
+    b.textContent = n === 0 ? 'Off' : n + 's';
+    b.onclick = () => {
+      onChange(n);
+      rr.querySelectorAll('.rounds-btn').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+    };
+    rr.appendChild(b);
+  });
+}
+
+// Start countdown on the given timer display elements
+// arcId = SVG arc element id, numId = text element id, displayId = wrapper id
+// onExpire called when timer hits 0
+function startCountdown(secs, displayId, arcId, numId, onExpire) {
+  clearInterval(_activeTimerInterval);
+  if (!secs) return; // off
+  const display = document.getElementById(displayId);
+  const arc     = document.getElementById(arcId);
+  const num     = document.getElementById(numId);
+  if (!display || !arc || !num) return;
+  display.style.display = '';
+  let remaining = secs;
+  arc.style.strokeDashoffset = '0';
+  arc.classList.remove('urgent');
+  num.textContent = remaining;
+
+  _activeTimerInterval = setInterval(() => {
+    remaining--;
+    num.textContent = remaining;
+    arc.style.strokeDashoffset = String(CIRC * (1 - remaining / secs));
+    if (remaining <= 5) arc.classList.add('urgent');
+    if (remaining <= 0) {
+      clearInterval(_activeTimerInterval);
+      _activeTimerInterval = null;
+      onExpire();
+    }
+  }, 1000);
+}
+
+function stopCountdown() {
+  clearInterval(_activeTimerInterval);
+  _activeTimerInterval = null;
+}
+
+/* ════════════════════════════════════════
    PLAY AGAIN / HOME (context-aware)
 ════════════════════════════════════════ */
 function onPlayAgain() {
@@ -1838,6 +1995,7 @@ function goOnlineHostSetup() {
       rr.appendChild(b);
     });
   }
+  renderTimerRow('oh-timer-row', _ohTimer, v => { _ohTimer = v; });
 }
 
 function updateOHQMode() {
@@ -1889,6 +2047,7 @@ function createOnlineRoom() {
       scores: { [name]: 0 }, prev_scores: null,
       totalRounds: _ohRounds, currentRound: 0,
       currentQuestion: '', questions, answers: [],
+      timerSecs: _ohTimer,
     };
 
     const timeout = setTimeout(() => {
@@ -1978,8 +2137,20 @@ function copyRoomCode(btn) {
   if (navigator.clipboard && OG) {
     navigator.clipboard.writeText(OG.roomCode).then(() => {
       btn.textContent = '✅ Copied!';
-      setTimeout(() => btn.textContent = '📋 Copy Code', 2000);
+      setTimeout(() => btn.textContent = '📋 Copy', 2000);
     });
+  }
+}
+
+function shareRoomCode() {
+  if (!OG) return;
+  const text = 'Join my Herd Mentality game! Room code: ' + OG.roomCode;
+  if (navigator.share) {
+    navigator.share({ title: 'Herd Mentality', text }).catch(() => {});
+  } else {
+    // Fallback: copy to clipboard
+    navigator.clipboard && navigator.clipboard.writeText(text);
+    alert('Room code copied: ' + OG.roomCode);
   }
 }
 
@@ -1991,6 +2162,7 @@ function startOnlineGame() {
   broadcastFromHost({
     type: 'game-start', players: OG.players,
     totalRounds: OG.totalRounds, currentRound: 1, question: OG.currentQuestion,
+    timerSecs: OG.timerSecs,
   });
   showOnlineAnswerScreen();
 }
@@ -2075,6 +2247,7 @@ function handleHostMsg(msg) {
       OG.totalRounds = msg.totalRounds;
       OG.currentRound = msg.currentRound;
       OG.currentQuestion = msg.question;
+      OG.timerSecs = msg.timerSecs || 0;
       OG.scores = Object.fromEntries(OG.players.map(p => [p.name, 0]));
       OG.myAnswer = null;
       showOnlineAnswerScreen();
@@ -2093,6 +2266,7 @@ function handleHostMsg(msg) {
     case 'next-round':
       OG.currentRound = msg.currentRound;
       OG.currentQuestion = msg.question;
+      OG.timerSecs = msg.timerSecs || 0;
       OG.myAnswer = null;
       showOnlineAnswerScreen();
       break;
@@ -2138,11 +2312,32 @@ function showOnlineAnswerScreen() {
   } else {
     countEl.style.display = 'none';
   }
+  document.getElementById('pa-timer-display').style.display = OG.timerSecs ? '' : 'none';
   goScreen('s-player-answer');
   setTimeout(() => field.focus(), 350);
+
+  if (OG.timerSecs) {
+    startCountdown(OG.timerSecs, 'pa-timer-display', 'pa-timer-arc', 'pa-timer-num', () => {
+      // Time's up — submit blank (player gets no point)
+      const f = document.getElementById('pa-answer-field');
+      if (!f.disabled) {
+        f.disabled = true;
+        document.getElementById('pa-submit-btn').disabled = true;
+        if (OG.mode === 'host') {
+          document.getElementById('pa-player-label').textContent = '⏰ Time's up!';
+          hostReceiveAnswer('__host__', '—');
+        } else {
+          OG.myAnswer = '—';
+          OG.hostConn.send({ type: 'answer', answer: '—' });
+          goScreen('s-player-waiting');
+        }
+      }
+    });
+  }
 }
 
 function submitOnlineAnswer() {
+  stopCountdown();
   const field = document.getElementById('pa-answer-field');
   const answer = field.value.trim();
   if (!answer) {
@@ -2298,7 +2493,7 @@ function showOnlineScores(isHost, forRound) {
     nextBtn.style.display = '';
     endBtn.style.display  = 'none';
     nextBtn.onclick = () => {
-      broadcastFromHost({ type: 'next-round', currentRound: OG.currentRound, question: OG.currentQuestion });
+      broadcastFromHost({ type: 'next-round', currentRound: OG.currentRound, question: OG.currentQuestion, timerSecs: OG.timerSecs });
       showOnlineAnswerScreen();
     };
   } else {
