@@ -1181,7 +1181,7 @@ function showReveal() {
   goScreen('s-reveal');
 
   // Calculate scores
-  const { herdAnswer, winners, isTie, count } = calcHerd(G.answers);
+  const { herdAnswer, winners, winnerNames, isTie, count } = calcHerd(G.answers);
 
   // Award points
   G.prev_scores = { ...G.scores };
@@ -1190,8 +1190,8 @@ function showReveal() {
   // Build answer items
   G.answers.forEach((a, i) => {
     const item   = document.createElement('div');
-    const isHerd = herdAnswer && normalize(a.answer) === herdAnswer;
-    const isTied = isTie && normalize(a.answer) !== '' && countOccurrences(G.answers, a.answer) > 1;
+    const isHerd = !!winnerNames && winnerNames.has(a.playerName);
+    const isTied = isTie && countOccurrences(G.answers, a.answer) > 1;
     item.className = 'answer-item' + (isHerd ? ' herd' : '') + (isTied && !isHerd ? ' tie-item' : '');
 
     const player = G.players.find(p => p.name === a.playerName);
@@ -1343,35 +1343,118 @@ function endGame() {
 }
 
 /* ════════════════════════════════════════
-   HERD CALCULATION
+   HERD CALCULATION (FUZZY MATCHING)
 ════════════════════════════════════════ */
+
+// British/American spellings + common equivalents
+const SYNONYMS = {
+  maths:'math', mathematics:'math',
+  colour:'color', colours:'color', coloured:'colored',
+  favourite:'favorite', favourites:'favorite',
+  grey:'gray', greys:'grays',
+  centre:'center', centres:'centers',
+  theatre:'theater', theatres:'theaters',
+  travelling:'traveling', travelled:'traveled',
+  organised:'organized', organising:'organizing',
+  recognised:'recognized', recognising:'recognizing',
+  practise:'practice',
+  telly:'tv', television:'tv',
+  aeroplane:'airplane', aeroplanes:'airplanes',
+  autumn:'fall',
+  jumper:'sweater', jumpers:'sweaters',
+  trainers:'sneakers', trainer:'sneaker',
+  sofa:'couch', settee:'couch',
+  rubbish:'garbage', rubbishes:'garbage',
+  biscuit:'cookie', biscuits:'cookies',
+  crisps:'chips', crisp:'chip',
+  lorry:'truck', lorries:'trucks',
+  motorway:'highway', motorways:'highways',
+  cellphone:'phone', smartphone:'phone', smartphones:'phones', mobiles:'phones', mobile:'phone',
+  football:'soccer',  // equate for non-US usage
+  ketchup:'catsup',
+};
+
 function normalize(s) {
   return s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+// Returns a canonical form used for grouping comparisons
+function canonical(s) {
+  let n = normalize(s);
+  if (!n) return n;
+  // Apply synonym map
+  if (SYNONYMS[n]) return SYNONYMS[n];
+  // Strip simple trailing plural 's' (but not 'ss', 'us', short words)
+  if (n.length > 3 && n.endsWith('s') && !n.endsWith('ss') && !n.endsWith('us')) {
+    return n.slice(0, -1);
+  }
+  return n;
+}
+
+// Levenshtein distance (used only for longer words to avoid false positives)
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  const row = Array.from({length: n + 1}, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = a[i-1] === b[j-1] ? row[j-1] : 1 + Math.min(row[j], prev, row[j-1]);
+      row[j-1] = prev; prev = tmp;
+    }
+    row[n] = prev;
+  }
+  return row[n];
+}
+
+function answersMatch(a, b) {
+  const ca = canonical(a), cb = canonical(b);
+  if (ca === cb) return true;
+  // Allow 1-char typo for words of 7+ canonical chars (reduces false positives)
+  if (ca.length >= 7 && cb.length >= 7 && levenshtein(ca, cb) === 1) return true;
+  return false;
+}
+
 function calcHerd(answers) {
-  const counts = {};
+  // Group answers by fuzzy equivalence
+  const groups = []; // [{displayAnswer, members:[{playerName,answer}]}]
+
   answers.forEach(a => {
-    const n = normalize(a.answer);
-    if (n) counts[n] = (counts[n] || 0) + 1;
+    let matched = false;
+    for (const g of groups) {
+      if (answersMatch(a.answer, g.rep)) {
+        g.members.push(a);
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) groups.push({ rep: a.answer.trim(), members: [a] });
   });
 
-  const maxCount = Math.max(0, ...Object.values(counts));
+  const maxCount = Math.max(0, ...groups.map(g => g.members.length));
   if (maxCount < 2) return { herdAnswer: null, winners: [], isTie: false, count: 0 };
 
-  const topAnswers = Object.entries(counts).filter(([, c]) => c === maxCount);
-  if (topAnswers.length > 1) {
-    return { herdAnswer: null, winners: [], isTie: true, count: maxCount };
-  }
+  const topGroups = groups.filter(g => g.members.length === maxCount);
+  if (topGroups.length > 1) return { herdAnswer: null, winners: [], isTie: true, count: maxCount };
 
-  const herdAnswer = topAnswers[0][0];
-  const winners = answers.filter(a => normalize(a.answer) === herdAnswer).map(a => a.playerName);
-  return { herdAnswer, winners, isTie: false, count: maxCount };
+  const winner = topGroups[0];
+  // Display the most frequently written form within the group
+  const freq = {};
+  winner.members.forEach(m => { const k = normalize(m.answer); freq[k] = (freq[k]||0)+1; });
+  const displayAnswer = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
+
+  return {
+    herdAnswer: displayAnswer,
+    winnerNames: new Set(winner.members.map(m => m.playerName)),
+    winners: winner.members.map(m => m.playerName),
+    isTie: false,
+    count: maxCount,
+  };
 }
 
 function countOccurrences(answers, answer) {
-  const n = normalize(answer);
-  return answers.filter(a => normalize(a.answer) === n).length;
+  return answers.filter(a => answersMatch(a.answer, answer)).length;
 }
 
 /* ════════════════════════════════════════
