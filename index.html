@@ -1075,7 +1075,7 @@
     <div style="font-size:3rem;margin-bottom:8px">🔗</div>
     <h2>Join a Game</h2>
 
-    <!-- Shown when arriving via share link — displays the pre-filled room code -->
+    <!-- Shown when arriving via share link -->
     <div id="jn-link-badge" style="display:none;margin-top:10px">
       <div class="online-badge" style="background:rgba(124,58,237,0.15);border-color:rgba(168,85,247,0.3);color:var(--purple-l)">
         🎮 Room <strong id="jn-link-code" style="letter-spacing:0.1em;margin-left:4px"></strong>
@@ -1087,8 +1087,8 @@
       <div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">Your Name</div>
       <input type="text" id="jn-name" placeholder="Enter your name" autocomplete="off" maxlength="20"
         onkeydown="if(event.key==='Enter')joinOnlineGame()">
-      <div id="jn-code-row" class="spacer" style="display:block">
-        <div style="height:20px"></div>
+      <div id="jn-code-row">
+        <div class="spacer"></div>
         <div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">Room Code</div>
         <input type="text" id="jn-code" placeholder="e.g. AB3X9" autocomplete="off" maxlength="5"
           style="text-transform:uppercase;letter-spacing:0.2em;font-size:1.4rem;text-align:center"
