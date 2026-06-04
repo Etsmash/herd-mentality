@@ -2144,13 +2144,13 @@ function copyRoomCode(btn) {
 
 function shareRoomCode() {
   if (!OG) return;
-  const text = 'Join my Herd Mentality game! Room code: ' + OG.roomCode;
+  const url  = 'https://etsmash.github.io/herd-mentality/';
+  const text = 'Join my Herd Mentality game! 🐄\nRoom code: ' + OG.roomCode + '\nOpen the game here: ' + url;
   if (navigator.share) {
-    navigator.share({ title: 'Herd Mentality', text }).catch(() => {});
+    navigator.share({ title: 'Herd Mentality 🐄', text, url }).catch(() => {});
   } else {
-    // Fallback: copy to clipboard
     navigator.clipboard && navigator.clipboard.writeText(text);
-    alert('Room code copied: ' + OG.roomCode);
+    alert('Copied!\nRoom code: ' + OG.roomCode + '\n' + url);
   }
 }
 
