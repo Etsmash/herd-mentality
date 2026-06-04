@@ -1232,16 +1232,15 @@ const ROUND_EMOJIS  = ['🎯','🔥','⚡','🎲','🌟','🚀','🎪','💥','�
 let G = null; // active game
 
 function newGame(players, totalRounds, questions) {
-  const shuffled = shuffle([...questions]);
   return {
     players: players.map((name, i) => ({ name, color: PLAYER_COLORS[i % 8] })),
     scores:  Object.fromEntries(players.map(n => [n, 0])),
     prev_scores: null,
     totalRounds,
     currentRound: 0,
-    questions: shuffled,
+    questions,            // already shuffled & sliced by caller
     currentQuestion: '',
-    answers: [],          // [{playerName, answer}]
+    answers: [],
     currentPlayerIdx: 0,
   };
 }
@@ -1354,21 +1353,19 @@ function startGame() {
   if (names.length < 2) return alert('Need at least 2 players!');
 
   const qmode = document.querySelector('input[name="qmode"]:checked').value;
-  let questions;
+  let pool;
   if (qmode === 'custom') {
-    const raw = document.getElementById('custom-questions').value;
-    questions = raw.split('\n').map(s => s.trim()).filter(Boolean);
-    if (questions.length < 1) return alert('Add at least one custom question!');
+    pool = document.getElementById('custom-questions').value
+      .split('\n').map(s => s.trim()).filter(Boolean);
+    if (!pool.length) return alert('Add at least one custom question!');
   } else {
-    questions = QUESTION_BANK;
+    pool = QUESTION_BANK;
   }
 
-  if (questions.length < selectedRounds) {
-    const needed = selectedRounds;
-    // repeat questions if not enough
-    while (questions.length < needed) questions = [...questions, ...questions];
-    questions = questions.slice(0, needed);
-  }
+  // Pad if pool is smaller than rounds, then shuffle and take exactly what's needed
+  let questions = [...pool];
+  while (questions.length < selectedRounds) questions = [...questions, ...questions];
+  questions = shuffle(questions).slice(0, selectedRounds);
 
   G = newGame(names, selectedRounds, questions);
   G.currentRound = 1;
