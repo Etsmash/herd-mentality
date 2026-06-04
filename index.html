@@ -1070,20 +1070,31 @@
 
   <!-- ═══════════ JOIN ENTRY ═══════════ -->
   <div id="s-join-entry" class="screen">
-    <button class="btn btn-ghost" style="width:auto;padding:0 16px;margin-bottom:20px;align-self:flex-start" onclick="goScreen('s-online-entry')">← Back</button>
+    <button class="btn btn-ghost" style="width:auto;padding:0 16px;margin-bottom:20px;align-self:flex-start" id="jn-back-btn" onclick="goScreen('s-online-entry')">← Back</button>
     <div class="flex-grow"></div>
     <div style="font-size:3rem;margin-bottom:8px">🔗</div>
     <h2>Join a Game</h2>
+
+    <!-- Shown when arriving via share link — displays the pre-filled room code -->
+    <div id="jn-link-badge" style="display:none;margin-top:10px">
+      <div class="online-badge" style="background:rgba(124,58,237,0.15);border-color:rgba(168,85,247,0.3);color:var(--purple-l)">
+        🎮 Room <strong id="jn-link-code" style="letter-spacing:0.1em;margin-left:4px"></strong>
+      </div>
+    </div>
+
     <div class="spacer"></div>
     <div class="card" style="width:100%">
       <div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">Your Name</div>
-      <input type="text" id="jn-name" placeholder="Enter your name" autocomplete="off" maxlength="20">
-      <div class="spacer"></div>
-      <div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">Room Code</div>
-      <input type="text" id="jn-code" placeholder="e.g. AB3X9" autocomplete="off" maxlength="5"
-        style="text-transform:uppercase;letter-spacing:0.2em;font-size:1.4rem;text-align:center"
-        oninput="this.value=this.value.toUpperCase()"
+      <input type="text" id="jn-name" placeholder="Enter your name" autocomplete="off" maxlength="20"
         onkeydown="if(event.key==='Enter')joinOnlineGame()">
+      <div id="jn-code-row" class="spacer" style="display:block">
+        <div style="height:20px"></div>
+        <div style="font-size:0.8rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">Room Code</div>
+        <input type="text" id="jn-code" placeholder="e.g. AB3X9" autocomplete="off" maxlength="5"
+          style="text-transform:uppercase;letter-spacing:0.2em;font-size:1.4rem;text-align:center"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')joinOnlineGame()">
+      </div>
     </div>
     <div class="spacer-lg"></div>
     <button class="btn btn-primary" onclick="joinOnlineGame()">Join Game →</button>
@@ -2144,13 +2155,13 @@ function copyRoomCode(btn) {
 
 function shareRoomCode() {
   if (!OG) return;
-  const url  = 'https://etsmash.github.io/herd-mentality/';
-  const text = 'Join my Herd Mentality game! 🐄\nRoom code: ' + OG.roomCode + '\nOpen the game here: ' + url;
+  const url  = 'https://etsmash.github.io/herd-mentality/?join=' + OG.roomCode;
+  const text = 'Join my Herd Mentality game! 🐄\nTap the link, enter your name and you\'re in!';
   if (navigator.share) {
     navigator.share({ title: 'Herd Mentality 🐄', text, url }).catch(() => {});
   } else {
-    navigator.clipboard && navigator.clipboard.writeText(text);
-    alert('Copied!\nRoom code: ' + OG.roomCode + '\n' + url);
+    navigator.clipboard && navigator.clipboard.writeText(text + '\n' + url);
+    alert('Link copied!\n' + url);
   }
 }
 
@@ -2560,6 +2571,26 @@ window.addEventListener('resize', () => {
   canvas.width  = window.innerWidth;
   canvas.height = window.innerHeight;
 });
+
+// Handle ?join=CODE share links — skip code entry, just ask for name
+(function handleJoinLink() {
+  const code = new URLSearchParams(window.location.search).get('join');
+  if (!code) return;
+  const upper = code.toUpperCase();
+  // Pre-fill the hidden code field
+  document.getElementById('jn-code').value = upper;
+  // Hide the code input row — player only needs to enter their name
+  document.getElementById('jn-code-row').style.display = 'none';
+  // Show which room they're joining
+  document.getElementById('jn-link-badge').style.display = '';
+  document.getElementById('jn-link-code').textContent = upper;
+  // Back button goes to welcome, not online-entry
+  document.getElementById('jn-back-btn').onclick = () => goScreen('s-welcome');
+  // Navigate straight to the join screen
+  goScreen('s-join-entry');
+  // Auto-focus the name field
+  setTimeout(() => document.getElementById('jn-name').focus(), 400);
+})();
 
 // Prevent double-tap zoom on iOS
 document.addEventListener('touchend', e => {
