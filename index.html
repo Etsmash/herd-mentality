@@ -43,8 +43,10 @@
 
     #app {
       position: relative;
+      max-width: 520px;
       width: 100%;
       height: 100%;
+      margin: 0 auto;
       overflow: hidden;
     }
 
@@ -65,23 +67,23 @@
       flex-direction: column;
       align-items: center;
       padding: 32px 20px 40px;
-      max-width: 520px;
-      margin: 0 auto;
-      left: 50%;
-      transform: translateX(calc(-50% + 100vw));
+      transform: translateX(100%);
       transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.35s;
       opacity: 0;
-      will-change: transform, opacity;
+      pointer-events: none;
+      background: linear-gradient(160deg, #0f0520 0%, #1a0840 50%, #0d1a3a 100%);
     }
 
     .screen.active {
-      transform: translateX(-50%);
+      transform: translateX(0);
       opacity: 1;
+      pointer-events: auto;
     }
 
     .screen.exit {
-      transform: translateX(calc(-50% - 100vw));
+      transform: translateX(-100%);
       opacity: 0;
+      pointer-events: none;
     }
 
     /* ── Typography ── */
@@ -1052,12 +1054,11 @@ function startGame() {
    ROUND START
 ════════════════════════════════════════ */
 function showRoundStart() {
-  const el = document.getElementById;
-  el('rs-round-num').textContent = G.currentRound;
-  el('rs-total').textContent      = G.totalRounds;
-  el('round-emoji').textContent   = ROUND_EMOJIS[(G.currentRound - 1) % ROUND_EMOJIS.length];
-  el('rs-title').textContent      = G.currentRound === 1 ? "Let's go!" : `Round ${G.currentRound}!`;
-  el('rs-sub').textContent        = G.currentRound === 1
+  document.getElementById('rs-round-num').textContent = G.currentRound;
+  document.getElementById('rs-total').textContent      = G.totalRounds;
+  document.getElementById('round-emoji').textContent   = ROUND_EMOJIS[(G.currentRound - 1) % ROUND_EMOJIS.length];
+  document.getElementById('rs-title').textContent      = G.currentRound === 1 ? "Let's go!" : `Round ${G.currentRound}!`;
+  document.getElementById('rs-sub').textContent        = G.currentRound === 1
     ? "Pass the phone to the first player when ready."
     : "Check the scores, then show the next question.";
 
