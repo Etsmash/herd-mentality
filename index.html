@@ -566,6 +566,15 @@
     .color-6  { background: linear-gradient(135deg, #7c3aed, #06b6d4); }
     .color-7  { background: linear-gradient(135deg, #be185d, #f59e0b); }
 
+    .color-8  { background: linear-gradient(135deg, #0d9488, #84cc16); }
+    .color-9  { background: linear-gradient(135deg, #e11d48, #fb923c); }
+    .color-10 { background: linear-gradient(135deg, #4f46e5, #38bdf8); }
+    .color-11 { background: linear-gradient(135deg, #b45309, #facc15); }
+    .color-12 { background: linear-gradient(135deg, #059669, #22d3ee); }
+    .color-13 { background: linear-gradient(135deg, #a21caf, #7c3aed); }
+    .color-14 { background: linear-gradient(135deg, #475569, #3b82f6); }
+    .color-15 { background: linear-gradient(135deg, #65a30d, #059669); }
+
     /* ── Animations ── */
     @keyframes fadeIn  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
     @keyframes popIn   { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
@@ -1057,7 +1066,7 @@
     </div>
     <div class="spacer"></div>
     <div class="card" style="width:100%">
-      <div style="font-size:0.75rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">Players <span id="hl-count">(1)</span></div>
+      <div style="font-size:0.75rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">Players <span id="hl-count">(1/16)</span></div>
       <div class="player-chips" id="hl-players"></div>
       <p style="color:var(--muted);font-size:0.85rem;text-align:center;margin-top:10px" id="hl-hint">Need at least 2 players to start</p>
     </div>
@@ -1226,8 +1235,10 @@ const QUESTION_BANK = [
 /* ════════════════════════════════════════
    GAME STATE
 ════════════════════════════════════════ */
-const PLAYER_COLORS = ['color-0','color-1','color-2','color-3','color-4','color-5','color-6','color-7'];
+const PLAYER_COLORS = ['color-0','color-1','color-2','color-3','color-4','color-5','color-6','color-7',
+                        'color-8','color-9','color-10','color-11','color-12','color-13','color-14','color-15'];
 const ROUND_EMOJIS  = ['🎯','🔥','⚡','🎲','🌟','🚀','🎪','💥','🎭','🎵','🏆'];
+const MAX_ONLINE_PLAYERS = 16;
 
 let G = null; // active game
 
@@ -1985,6 +1996,16 @@ function genRoomCode() {
   return Array.from({length:5}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
 }
 
+// STUN-only ICE config fails to traverse symmetric NATs (common on mobile carriers),
+// so as more players join, the odds at least one direct connection fails goes up.
+// Add a public TURN relay as fallback so connections still succeed behind strict NATs.
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+];
+
 // ── Host setup screen ──────────────────────────────────────────────────────────
 
 function goOnlineHostSetup() {
@@ -2041,7 +2062,7 @@ function createOnlineRoom() {
     try {
       peer = new Peer('hm-' + code, {
         host: '0.peerjs.com', secure: true, port: 443,
-        config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+        config: { iceServers: ICE_SERVERS }
       });
     } catch(e) {
       btn.disabled = false; goScreen('s-online-host-setup');
@@ -2086,10 +2107,14 @@ function setupHostConn(conn) {
   conn.on('data', msg => {
     if (!OG) return;
     if (msg.type === 'join') {
+      if (OG.players.length >= MAX_ONLINE_PLAYERS) {
+        conn.send({ type: 'room-full', max: MAX_ONLINE_PLAYERS });
+        return;
+      }
       let finalName = (msg.name || 'Player').trim().slice(0, 20);
       if (OG.players.find(p => p.name === finalName))
         finalName += Math.floor(Math.random()*90+10);
-      const colorIdx = OG.players.length % 8;
+      const colorIdx = OG.players.length % PLAYER_COLORS.length;
       OG.playerNames.set(conn.peer, finalName);
       OG.players.push({ name: finalName, color: PLAYER_COLORS[colorIdx] });
       OG.scores[finalName] = 0;
@@ -2135,7 +2160,7 @@ function renderHostLobby() {
       <div class="player-avatar ${p.color}" style="width:26px;height:26px;font-size:0.7rem">${p.name[0].toUpperCase()}</div>
       <span>${esc(p.name)}</span>
     </div>`).join('');
-  document.getElementById('hl-count').textContent = '(' + OG.players.length + ')';
+  document.getElementById('hl-count').textContent = '(' + OG.players.length + '/' + MAX_ONLINE_PLAYERS + ')';
   const startBtn = document.getElementById('hl-start');
   startBtn.disabled = OG.players.length < 2;
   document.getElementById('hl-hint').style.display = OG.players.length < 2 ? '' : 'none';
@@ -2197,7 +2222,7 @@ function joinOnlineGame() {
     try {
       peer = new Peer({
         host: '0.peerjs.com', secure: true, port: 443,
-        config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+        config: { iceServers: ICE_SERVERS }
       });
     } catch(e) { goScreen('s-join-entry'); alert('Could not connect: ' + e.message); return; }
 
@@ -2241,6 +2266,10 @@ function joinOnlineGame() {
 function handleHostMsg(msg) {
   if (!OG) return;
   switch (msg.type) {
+    case 'room-full':
+      alert('This room is full (max ' + (msg.max || MAX_ONLINE_PLAYERS) + ' players).');
+      cancelOnlineGame();
+      break;
     case 'joined':
       OG.myName = msg.name;
       OG.players = msg.players;
